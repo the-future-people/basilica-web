@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Basilica — Operations</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: { 50:'#FFFBEB',100:'#FEF3C7',200:'#FDE68A',400:'#FBBF24',500:'#F59E0B',600:'#D97706',700:'#B45309' },
+            green: { 50:'#ECFDF5',100:'#D1FAE5',500:'#10B981',600:'#059669',700:'#047857' },
+          },
+          fontFamily: {
+            sans:    ['DM Sans', 'sans-serif'],
+            mono:    ['DM Mono', 'monospace'],
+            display: ['Syne', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+  <style>
+    body { font-family: 'DM Sans', sans-serif; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; border-radius: 8px;
+      cursor: pointer; transition: all 0.15s;
+      color: #6B7280; font-size: 13px; font-weight: 500;
+    }
+    .nav-item:hover { background: #F9FAFB; color: #111827; }
+    .nav-item.active { background: #FFFBEB; color: #D97706; }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+    #view-container { transition: opacity 0.15s ease, transform 0.15s ease; }
+    .custom-scroll::-webkit-scrollbar { width: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 2px; }
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- TOP NAVBAR -->
+  <nav id="navbar" class="bg-white border-b border-gray-200 sticky top-0 z-50"></nav>
+
+  <!-- SHELL LAYOUT -->
+  <div class="flex" style="height: calc(100vh - 56px)">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="hidden lg:flex flex-col w-56 bg-white border-r border-gray-200 flex-shrink-0 overflow-y-auto custom-scroll"></aside>
+
+    <!-- VIEW CONTAINER — content swaps here -->
+    <main id="view-container" class="flex-1 overflow-auto custom-scroll">
+    </main>
+
+  </div>
+
+  <!-- Load modules in order -->
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/api.js"></script>
+
+  <!-- Views -->
+  <script src="views/overview.js"></script>
+  <script src="views/bins.js"></script>
+  <script src="views/trips.js"></script>
+  <script src="views/billing.js"></script>
+
+  <!-- App + Router last -->
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/router.js"></script>
+
+  <script>
+    // Boot
+    document.addEventListener('DOMContentLoaded', () => {
+      APP.init();
+      APP.loadCircuitInfo();
+    });
+  </script>
+
+</body>
+</html>
