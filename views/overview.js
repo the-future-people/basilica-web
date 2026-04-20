@@ -2,13 +2,14 @@
 const OverviewView = {
 
   _refreshInterval: null,
+  _truckInterval: null,
   _allBins: [],
+  _activeTrip: null,
+  _truckPosition: null,
 
   template() {
     return `
     <div class="p-6">
-
-      <!-- Map + Right panel -->
       <div class="flex gap-5" style="height:calc(100vh - 180px)">
 
         <!-- Map section -->
@@ -87,8 +88,6 @@ const OverviewView = {
 
         <!-- Right panel -->
         <div class="hidden xl:flex flex-col w-72 gap-4">
-
-          <!-- Active trip -->
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden flex-shrink-0">
             <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
               <div class="text-sm font-semibold text-gray-900">Active Trip</div>
@@ -98,8 +97,6 @@ const OverviewView = {
               <div class="text-xs text-gray-400 text-center py-4">Loading...</div>
             </div>
           </div>
-
-          <!-- Bin list -->
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden flex-1 flex flex-col min-h-0">
             <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
               <div class="text-sm font-semibold text-gray-900">Bins by fill level</div>
@@ -122,6 +119,7 @@ const OverviewView = {
     'BSL-019':{x:32,y:16},'BSL-020':{x:54,y:62},
   },
 
+  // ── Helpers ──
   getStatus(bin) {
     if (!bin.is_online) return 'offline';
     const f = bin.fill_level ?? 0;
@@ -134,6 +132,7 @@ const OverviewView = {
     return {critical:'#EF4444',warning:'#F59E0B',ok:'#10B981',offline:'#9CA3AF'}[status];
   },
 
+  // ── Map filter ──
   filterMap(filter, btn) {
     document.querySelectorAll('.ov-filter').forEach(b => {
       b.className = 'ov-filter px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-gray-500 border border-gray-200 transition-all';
@@ -142,10 +141,12 @@ const OverviewView = {
     this.renderMarkers(this._allBins, filter);
   },
 
+  // ── Bin markers ──
   renderMarkers(bins, filter = 'all') {
     const container = document.getElementById('ov-markers');
     if (!container) return;
     container.innerHTML = '';
+
     bins.forEach(bin => {
       const status = this.getStatus(bin);
       if (filter !== 'all' && status !== filter) return;
@@ -153,30 +154,32 @@ const OverviewView = {
       if (!pos) return;
       const color = this.getPinColor(status);
       const fill  = bin.fill_level ?? 0;
+
       const m = document.createElement('div');
       m.style.cssText = `position:absolute;left:${pos.x}%;top:${pos.y}%;transform:translate(-50%,-50%);cursor:pointer;z-index:10`;
       m.innerHTML = `
         <div style="width:14px;height:14px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.2);transition:transform 0.15s"
           onmouseover="this.style.transform='scale(1.5)'" onmouseout="this.style.transform='scale(1)'"></div>
-        <div style="display:none;position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:10px 12px;min-width:150px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:20;white-space:nowrap"
-          class="bin-tip">
+        <div style="display:none;position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:10px 12px;min-width:150px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:20;white-space:nowrap" class="bin-tip">
           <div style="font-family:monospace;font-size:10px;color:#9CA3AF;margin-bottom:4px">${bin.serial_number}</div>
           <div style="font-size:20px;font-weight:700;font-family:monospace;color:${color};line-height:1;margin-bottom:3px">${bin.is_online ? fill+'%' : 'Offline'}</div>
           <div style="font-size:11px;color:#6B7280">${bin.location_description}</div>
         </div>`;
-      m.querySelector('div').addEventListener('mouseover', () => {
-        m.querySelector('.bin-tip').style.display = 'block';
-      });
-      m.querySelector('div').addEventListener('mouseout', () => {
-        m.querySelector('.bin-tip').style.display = 'none';
-      });
+      m.querySelector('div').addEventListener('mouseover', () => m.querySelector('.bin-tip').style.display = 'block');
+      m.querySelector('div').addEventListener('mouseout',  () => m.querySelector('.bin-tip').style.display = 'none');
       m.onclick = () => ROUTER.go('bins');
       container.appendChild(m);
     });
+
+    // Re-render truck on top after markers
+    if (this._activeTrip && this._truckPosition) {
+      this.renderTruck(container, this._truckPosition);
+    }
   },
 
+  // ── Stats bar ──
   renderStats(bins) {
-    let critical=0,warning=0,ok=0,offline=0;
+    let critical=0, warning=0, ok=0, offline=0;
     bins.forEach(b => {
       const s = this.getStatus(b);
       if (s==='critical') critical++;
@@ -185,38 +188,35 @@ const OverviewView = {
       else offline++;
     });
     const set = (id,val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-    set('ov-critical',critical);
-    set('ov-warning',warning);
-    set('ov-healthy',ok);
-    set('ov-offline',offline);
+    set('ov-critical', critical);
+    set('ov-warning',  warning);
+    set('ov-healthy',  ok);
+    set('ov-offline',  offline);
     set('sidebarBinCount', bins.length);
 
-    // Alert banner
-    if (critical > 0) {
-      const existing = document.getElementById('ov-alertBanner');
-      if (!existing) {
-        const banner = document.createElement('div');
-        banner.id = 'ov-alertBanner';
-        banner.className = 'bg-red-50 border-b border-red-200 px-5 py-2.5 flex items-center gap-3';
-        banner.innerHTML = `
-          <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-          </svg>
-          <span class="text-sm text-red-700">${critical} bin${critical>1?'s':''} above 80% fill — needs urgent collection.</span>
-          <button onclick="ROUTER.go('bins')" class="text-sm font-semibold text-red-700 underline ml-1">View bins →</button>`;
-        document.getElementById('view-container').prepend(banner);
-      }
+    if (critical > 0 && !document.getElementById('ov-alertBanner')) {
+      const banner = document.createElement('div');
+      banner.id = 'ov-alertBanner';
+      banner.className = 'bg-red-50 border-b border-red-200 px-5 py-2.5 flex items-center gap-3';
+      banner.innerHTML = `
+        <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+        </svg>
+        <span class="text-sm text-red-700">${critical} bin${critical>1?'s':''} above 80% fill — needs urgent collection.</span>
+        <button onclick="ROUTER.go('bins')" class="text-sm font-semibold text-red-700 underline ml-1">View bins →</button>`;
+      document.getElementById('view-container').prepend(banner);
     }
   },
 
+  // ── Bin list (right panel) ──
   renderBinList(bins) {
     const list = document.getElementById('ov-binList');
     if (!list) return;
-    const colors = {critical:'#EF4444',warning:'#F59E0B',ok:'#10B981',offline:'#9CA3AF'};
+    const colors  = {critical:'#EF4444',warning:'#F59E0B',ok:'#10B981',offline:'#9CA3AF'};
     const textCls = {critical:'text-red-600',warning:'text-amber-500',ok:'text-green-600',offline:'text-gray-400'};
-    const sorted = [...bins].sort((a,b) => (b.fill_level??0)-(a.fill_level??0));
+    const sorted  = [...bins].sort((a,b) => (b.fill_level??0)-(a.fill_level??0));
     list.innerHTML = sorted.map(bin => {
-      const s = this.getStatus(bin);
+      const s    = this.getStatus(bin);
       const fill = bin.fill_level ?? 0;
       return `
         <div class="flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors" onclick="ROUTER.go('bins')">
@@ -231,6 +231,7 @@ const OverviewView = {
     }).join('');
   },
 
+  // ── Active trip panel ──
   renderTrip(trips) {
     const panel = document.getElementById('ov-tripPanel');
     if (!panel) return;
@@ -239,15 +240,13 @@ const OverviewView = {
       panel.innerHTML = `<div class="text-xs text-gray-400 text-center py-4">No active trip right now</div>`;
       return;
     }
-    const pct = active.total_bins_planned > 0
-      ? Math.round((active.total_bins_collected / active.total_bins_planned) * 100) : 0;
+    const pct      = active.total_bins_planned > 0 ? Math.round((active.total_bins_collected / active.total_bins_planned) * 100) : 0;
     const initials = (active.driver_name||'D').split(' ').map(n=>n[0]).join('').substring(0,2);
 
-    // Update sidebar driver card
-    const card = document.getElementById('sidebarDriverCard');
+    const card  = document.getElementById('sidebarDriverCard');
     const dName = document.getElementById('sidebarDriverName');
     const dInfo = document.getElementById('sidebarDriverInfo');
-    if (card) card.classList.remove('hidden');
+    if (card)  card.classList.remove('hidden');
     if (dName) dName.textContent = active.driver_name;
     if (dInfo) dInfo.textContent = `Stop ${active.total_bins_collected} of ${active.total_bins_planned}`;
     const liveTag = document.getElementById('sidebarActiveTrip');
@@ -289,12 +288,156 @@ const OverviewView = {
       </div>`;
   },
 
-  async mount(container) {
-    container.innerHTML = this.template();
-    await this.loadData();
-    this._refreshInterval = setInterval(() => this.loadData(), 60000);
+  // ── Truck: get current stop ──
+  getCurrentStopPosition(trip) {
+    if (!trip || !trip.stops) return null;
+    const collected = trip.stops
+      .filter(s => s.status === 'collected')
+      .sort((a, b) => b.order - a.order);
+    const current = collected[0] || trip.stops.sort((a,b) => a.order - b.order)[0];
+    if (!current) return null;
+    return { stop: current, pos: this.binPositions[current.bin_serial] };
   },
 
+renderTruck(container, stopData) {
+    const existing = document.getElementById('ov-truck');
+    if (existing) existing.remove();
+    if (!stopData?.pos) return;
+
+    const { stop, pos } = stopData;
+
+    const truck = document.createElement('div');
+    truck.id = 'ov-truck';
+    truck.className = 'truck-marker';
+    truck.style.cssText = `
+      position: absolute;
+      left: ${pos.x}%;
+      top: ${pos.y}%;
+      transform: translate(-50%, -50%);
+      z-index: 30;
+      cursor: pointer;
+    `;
+
+    truck.innerHTML = `
+      <div style="position:relative" title="Kofi Mensah · Stop ${stop.order}">
+        <!-- Top-down truck SVG like Bolt/Uber -->
+        <svg width="36" height="52" viewBox="0 0 36 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Shadow -->
+          <ellipse cx="18" cy="46" rx="10" ry="4" fill="rgba(0,0,0,0.15)"/>
+          <!-- Truck body -->
+          <rect x="6" y="8" width="24" height="36" rx="6" fill="#1F2937"/>
+          <!-- Cab roof highlight -->
+          <rect x="9" y="10" width="18" height="10" rx="3" fill="#374151"/>
+          <!-- Windshield -->
+          <rect x="10" y="11" width="16" height="7" rx="2" fill="#93C5FD" opacity="0.8"/>
+          <!-- Left side window -->
+          <rect x="7" y="22" width="4" height="6" rx="1" fill="#6B7280" opacity="0.6"/>
+          <!-- Right side window -->
+          <rect x="25" y="22" width="4" height="6" rx="1" fill="#6B7280" opacity="0.6"/>
+          <!-- Cargo area lines -->
+          <rect x="9" y="30" width="18" height="1.5" rx="1" fill="#374151"/>
+          <rect x="9" y="34" width="18" height="1.5" rx="1" fill="#374151"/>
+          <!-- Amber accent stripe on top -->
+          <rect x="6" y="8" width="24" height="3" rx="2" fill="#F59E0B"/>
+          <!-- Front lights -->
+          <rect x="8" y="8" width="5" height="2" rx="1" fill="#FCD34D"/>
+          <rect x="23" y="8" width="5" height="2" rx="1" fill="#FCD34D"/>
+          <!-- Rear lights -->
+          <rect x="8" y="42" width="5" height="2" rx="1" fill="#EF4444"/>
+          <rect x="23" y="42" width="5" height="2" rx="1" fill="#EF4444"/>
+          <!-- Left wheel -->
+          <rect x="3" y="14" width="4" height="7" rx="2" fill="#111827"/>
+          <rect x="3" y="28" width="4" height="7" rx="2" fill="#111827"/>
+          <!-- Right wheel -->
+          <rect x="29" y="14" width="4" height="7" rx="2" fill="#111827"/>
+          <rect x="29" y="28" width="4" height="7" rx="2" fill="#111827"/>
+          <!-- Live green dot -->
+          <circle cx="18" cy="22" r="4" fill="#10B981"/>
+          <circle cx="18" cy="22" r="2.5" fill="#fff"/>
+        </svg>
+        <!-- Stop label underneath -->
+        <div style="
+          position:absolute;
+          bottom:-18px;
+          left:50%;
+          transform:translateX(-50%);
+          background:#111827;
+          color:#fff;
+          font-size:9px;
+          font-weight:700;
+          font-family:'DM Sans',sans-serif;
+          padding:2px 6px;
+          border-radius:4px;
+          white-space:nowrap;
+          letter-spacing:0.04em;
+        ">Stop ${stop.order}</div>
+      </div>`;
+
+    container.appendChild(truck);
+    this._truckPosition = { stop, pos };
+  },
+
+  // ── Truck: move smoothly ──
+  moveTruck(stopData) {
+    if (!stopData?.pos) return;
+    const { stop, pos } = stopData;
+    const driverName = this._activeTrip?.driver_name?.split(' ')[0] || 'Driver';
+
+    let truck = document.getElementById('ov-truck');
+    if (!truck) {
+      const container = document.getElementById('ov-markers');
+      if (container) this.renderTruck(container, stopData);
+      return;
+    }
+
+    // Only move if stop changed
+    if (this._truckPosition?.stop?.order === stop.order) return;
+
+    // Smooth CSS transition move
+    truck.style.left = pos.x + '%';
+    truck.style.top  = pos.y + '%';
+
+    // Update label
+    const label = truck.querySelector('div > div');
+    if (label) label.textContent = `Stop ${stop.order}`;
+
+    this._truckPosition = { stop, pos };
+
+    // Restart bob animation
+    truck.style.animation = 'none';
+    setTimeout(() => { truck.style.animation = 'truckBob 2s ease-in-out infinite'; }, 2100);
+  },
+
+  // ── Truck: poll every 15s ──
+  startTruckPolling() {
+    if (this._truckInterval) clearInterval(this._truckInterval);
+    this._truckInterval = setInterval(async () => {
+      if (!this._activeTrip) return;
+      try {
+        const updated = await API.getTrip(this._activeTrip.id);
+        this._activeTrip = updated;
+        const stopData = this.getCurrentStopPosition(updated);
+        if (stopData) {
+          this.moveTruck(stopData);
+          const dInfo = document.getElementById('sidebarDriverInfo');
+          if (dInfo) dInfo.textContent = `Stop ${updated.total_bins_collected} of ${updated.total_bins_planned}`;
+        }
+        if (updated.status === 'completed') {
+          const truck = document.getElementById('ov-truck');
+          if (truck) {
+            truck.style.opacity = '0';
+            truck.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => truck.remove(), 500);
+          }
+          clearInterval(this._truckInterval);
+        }
+      } catch (err) {
+        console.error('Truck poll error:', err);
+      }
+    }, 15000);
+  },
+
+  // ── Load all data ──
   async loadData() {
     try {
       const [binsData, tripsData, circuits] = await Promise.all([
@@ -314,7 +457,29 @@ const OverviewView = {
       this.renderMarkers(this._allBins, 'all');
       this.renderStats(this._allBins);
       this.renderBinList(this._allBins);
-      this.renderTrip(tripsData.results || tripsData);
+
+      // Load active trip with full stops
+      const activeTrips = tripsData.results || tripsData;
+      const activeTrip  = activeTrips.find(t => t.status === 'in_progress');
+
+      if (activeTrip) {
+        try { this._activeTrip = await API.getTrip(activeTrip.id); }
+        catch(e) { this._activeTrip = activeTrip; }
+      } else {
+        this._activeTrip = null;
+      }
+
+      this.renderTrip(activeTrips);
+
+      // Place truck on map
+      if (this._activeTrip) {
+        const stopData  = this.getCurrentStopPosition(this._activeTrip);
+        const container = document.getElementById('ov-markers');
+        if (container && stopData) {
+          this.renderTruck(container, stopData);
+        }
+        this.startTruckPolling();
+      }
 
       const loading = document.getElementById('ov-mapLoading');
       if (loading) loading.style.display = 'none';
@@ -324,12 +489,18 @@ const OverviewView = {
     }
   },
 
+  // ── Lifecycle ──
+  async mount(container) {
+    container.innerHTML = this.template();
+    await this.loadData();
+    this._refreshInterval = setInterval(() => this.loadData(), 60000);
+  },
+
   unmount() {
-    if (this._refreshInterval) {
-      clearInterval(this._refreshInterval);
-      this._refreshInterval = null;
-    }
-    // Remove alert banner if present
+    if (this._refreshInterval) { clearInterval(this._refreshInterval); this._refreshInterval = null; }
+    if (this._truckInterval)   { clearInterval(this._truckInterval);   this._truckInterval   = null; }
+    this._activeTrip    = null;
+    this._truckPosition = null;
     const banner = document.getElementById('ov-alertBanner');
     if (banner) banner.remove();
   }
