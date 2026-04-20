@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Basilica</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: { 50:'#FFFBEB',100:'#FEF3C7',200:'#FDE68A',400:'#FBBF24',500:'#F59E0B',600:'#D97706',700:'#B45309' },
+            green: { 50:'#ECFDF5',100:'#D1FAE5',500:'#10B981',600:'#059669',700:'#047857' },
+          },
+          fontFamily: {
+            sans:    ['DM Sans', 'sans-serif'],
+            mono:    ['DM Mono', 'monospace'],
+            display: ['Syne', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+  <style>
+    body { font-family: 'DM Sans', sans-serif; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    .fade-up { animation: fadeUp 0.4s ease both; }
+    .delay-1 { animation-delay: 0.08s; }
+    .delay-2 { animation-delay: 0.16s; }
+    .delay-3 { animation-delay: 0.24s; }
+    .delay-4 { animation-delay: 0.32s; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .blink { animation: blink 2s ease-in-out infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .spin { animation: spin 0.8s linear infinite; }
+
+    /* Sidebar */
+    .nav-item { display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all 0.15s;color:#6B7280;font-size:13px;font-weight:500; }
+    .nav-item:hover { background:#F9FAFB;color:#111827; }
+    .nav-item.active { background:#FFFBEB;color:#D97706; }
+    .nav-item svg { width:16px;height:16px;flex-shrink:0; }
+
+    /* Map */
+    .map-bg {
+      background-color:#EEF0F3;
+      background-image:
+        linear-gradient(rgba(0,0,0,0.05) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(0,0,0,0.05) 1px,transparent 1px);
+      background-size:40px 40px;
+    }
+
+    /* Bin marker tooltip */
+    .bin-marker { position:absolute;transform:translate(-50%,-50%);cursor:pointer;z-index:10; }
+    .bin-pin { width:14px;height:14px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.2);transition:transform 0.15s; }
+    .bin-marker:hover .bin-pin { transform:scale(1.5); }
+    .bin-tooltip-pop { display:none;position:absolute;bottom:22px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:10px 12px;min-width:155px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:20; }
+    .bin-marker:hover .bin-tooltip-pop { display:block; }
+
+    /* Fill bar */
+    .fill-bar { height:4px;background:#F3F4F6;border-radius:2px;overflow:hidden; }
+    .fill-bar-inner { height:100%;border-radius:2px;transition:width 0.3s; }
+
+    /* Scrollbar */
+    .custom-scroll::-webkit-scrollbar { width:4px; }
+    .custom-scroll::-webkit-scrollbar-track { background:transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background:#E5E7EB;border-radius:2px; }
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ── TOP NAV ── -->
+<nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+  <div class="flex items-center justify-between px-5 h-14">
+
+    <!-- Logo -->
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0">
+        <span class="font-display font-bold text-sm text-black">B</span>
+      </div>
+      <div class="hidden sm:block">
+        <div class="font-display font-bold text-sm tracking-widest text-gray-900">BASILICA</div>
+      </div>
+      <!-- Circuit badge -->
+      <div class="flex items-center gap-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1 ml-2">
+        <span class="text-xs font-bold text-gray-500 uppercase tracking-wide" id="navCircuitCode">ACC-001</span>
+        <span class="text-gray-300">·</span>
+        <span class="text-xs text-gray-500" id="navCircuitName">Ayawaso West</span>
+      </div>
+    </div>
+
+    <!-- Nav links — desktop -->
+    <div class="hidden md:flex items-center gap-1">
+      <a href="dashboard.html" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-50 text-amber-700 border border-amber-200">Overview</a>
+      <a href="bins.html"      class="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-all">Bins</a>
+      <a href="trips.html"     class="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-all">Trips</a>
+      <a href="billing.html"   class="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-all">Billing</a>
+    </div>
+
+    <!-- Right -->
+    <div class="flex items-center gap-3">
+      <!-- Live indicator -->
+      <div class="hidden sm:flex items-center gap-1.5 text-xs font-medium text-green-600">
+        <div class="w-1.5 h-1.5 rounded-full bg-green-500 blink"></div>
+        Live
+      </div>
+      <!-- Clock -->
+      <div class="font-mono text-xs text-gray-400" id="navClock"></div>
+      <!-- Notifications -->
+      <button onclick="window.location.reload()" class="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
+        <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+        </svg>
+      </button>
+      <!-- Avatar -->
+      <div class="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center cursor-pointer" id="navAvatar">
+        <span class="text-xs font-bold text-black" id="navInitials">KA</span>
+      </div>
+      <!-- Logout -->
+      <button onclick="handleLogout()" class="hidden sm:flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/>
+        </svg>
+        Logout
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── ALERT BANNER ── -->
+<div id="alertBanner" class="hidden bg-red-50 border-b border-red-200 px-5 py-2.5 flex items-center gap-3">
+  <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+  </svg>
+  <span class="text-sm text-red-700" id="alertBannerText"></span>
+  <a href="bins.html" class="text-sm font-semibold text-red-700 underline ml-1">View critical bins →</a>
+</div>
+
+<!-- ── MAIN LAYOUT ── -->
+<div class="flex" style="height:calc(100vh - 56px)">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="hidden lg:flex flex-col w-56 bg-white border-r border-gray-200 py-4 flex-shrink-0">
+    <div class="px-3 flex flex-col gap-1">
+      <div class="text-xs font-semibold uppercase tracking-widest text-gray-400 px-3 mb-1">Operations</div>
+      <div class="nav-item active">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
+        Overview
+      </div>
+      <a href="bins.html" class="nav-item">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+        All Bins
+        <span class="ml-auto bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded-full" id="sidebarBinCount">—</span>
+      </a>
+      <div class="text-xs font-semibold uppercase tracking-widest text-gray-400 px-3 mb-1 mt-3">Collection</div>
+      <a href="trips.html" class="nav-item">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>
+        Trips
+        <span id="sidebarActiveTrip" class="ml-auto hidden bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">Live</span>
+      </a>
+      <div class="text-xs font-semibold uppercase tracking-widest text-gray-400 px-3 mb-1 mt-3">Finance</div>
+      <a href="billing.html" class="nav-item">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>
+        Billing
+      </a>
+    </div>
+
+    <!-- Driver card -->
+    <div class="mt-auto px-3 pb-2">
+      <div id="driverCard" class="hidden bg-green-50 border border-green-200 rounded-xl p-3">
+        <div class="flex items-center gap-2 mb-1">
+          <div class="w-2 h-2 rounded-full bg-green-500 blink"></div>
+          <span class="text-xs font-semibold text-green-700">Driver on trip</span>
+        </div>
+        <div class="text-sm font-semibold text-gray-900" id="driverName">—</div>
+        <div class="text-xs text-gray-500 mt-0.5" id="driverTripInfo">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── CONTENT ── -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- MAP + RIGHT PANEL -->
+    <div class="flex flex-1 overflow-hidden">
+
+      <!-- MAP SECTION -->
+      <div class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- Map toolbar -->
+        <div class="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between flex-shrink-0">
+          <div class="flex items-center gap-3">
+            <div>
+              <div class="text-sm font-semibold text-gray-900">Circuit Map</div>
+              <div class="text-xs text-gray-400" id="mapSubtitle">Loading...</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 text-xs font-medium text-green-600 mr-2">
+              <div class="w-1.5 h-1.5 rounded-full bg-green-500 blink"></div>
+              Live telemetry
+            </div>
+            <button onclick="filterMap('all',this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500 text-black border border-amber-500 transition-all">All</button>
+            <button onclick="filterMap('critical',this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-gray-500 border border-gray-200 hover:border-red-300 hover:text-red-600 transition-all">Critical</button>
+            <button onclick="filterMap('offline',this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-gray-500 border border-gray-200 hover:border-gray-400 transition-all">Offline</button>
+          </div>
+        </div>
+
+        <!-- Map -->
+        <div class="flex-1 map-bg relative overflow-hidden" id="mapContainer">
+          <!-- Roads SVG -->
+          <svg class="absolute inset-0 w-full h-full" viewBox="0 0 700 500" preserveAspectRatio="xMidYMid slice" fill="none">
+            <path d="M0 250 Q175 238 350 250 Q525 262 700 250" stroke="#D1D5DB" stroke-width="14" stroke-linecap="round"/>
+            <path d="M350 0 Q344 125 350 250 Q356 375 350 500" stroke="#D1D5DB" stroke-width="12" stroke-linecap="round"/>
+            <path d="M0 125 Q220 118 440 125 Q570 129 700 122" stroke="#E5E7EB" stroke-width="7"/>
+            <path d="M0 375 Q240 368 460 375 Q590 379 700 372" stroke="#E5E7EB" stroke-width="7"/>
+            <path d="M175 0 Q169 250 175 500" stroke="#E5E7EB" stroke-width="6"/>
+            <path d="M525 0 Q519 250 525 500" stroke="#E5E7EB" stroke-width="6"/>
+            <path d="M0 188 Q140 184 280 188" stroke="#EAECEF" stroke-width="4"/>
+            <path d="M420 188 Q560 184 700 188" stroke="#EAECEF" stroke-width="4"/>
+            <text x="18" y="246" fill="#C4C9D4" font-size="10" font-family="DM Sans">Ring Road Central</text>
+            <text x="358" y="22" fill="#C4C9D4" font-size="10" font-family="DM Sans">Dzorwulu Rd</text>
+            <text x="182" y="22" fill="#C4C9D4" font-size="9" font-family="DM Sans">Legon Ave</text>
+            <text x="358" y="128" fill="#C4C9D4" font-size="9" font-family="DM Sans">Airport Rd</text>
+            <text x="358" y="378" fill="#C4C9D4" font-size="9" font-family="DM Sans">Okponglo Rd</text>
+            <text x="60" y="88" fill="#CDD0D8" font-size="11" font-family="DM Sans" font-weight="600">EAST LEGON</text>
+            <text x="460" y="88" fill="#CDD0D8" font-size="11" font-family="DM Sans" font-weight="600">AIRPORT</text>
+            <text x="60" y="360" fill="#CDD0D8" font-size="11" font-family="DM Sans" font-weight="600">OKPONGLO</text>
+            <text x="450" y="360" fill="#CDD0D8" font-size="11" font-family="DM Sans" font-weight="600">DZORWULU</text>
+            <text x="250" y="242" fill="#CDD0D8" font-size="10" font-family="DM Sans" font-weight="600">ROMAN RIDGE</text>
+          </svg>
+          <!-- Bin markers injected here -->
+          <div id="binMarkers"></div>
+          <!-- Loading overlay -->
+          <div id="mapLoading" class="absolute inset-0 bg-gray-100 bg-opacity-80 flex items-center justify-center">
+            <div class="flex items-center gap-3 bg-white rounded-xl px-5 py-3 shadow-sm border border-gray-200">
+              <svg class="w-4 h-4 text-amber-500 spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              <span class="text-sm text-gray-600 font-medium">Loading bin telemetry...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats bar -->
+        <div class="bg-white border-t border-gray-200 px-4 py-3 grid grid-cols-4 gap-3 flex-shrink-0">
+          <div id="statCritical" class="flex items-center gap-3 p-2.5 rounded-xl border border-transparent hover:border-red-100 hover:bg-red-50 cursor-pointer transition-all" onclick="filterMap('critical',null)">
+            <div class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center text-sm">🔴</div>
+            <div>
+              <div class="text-xl font-mono font-bold text-red-600" id="countCritical">—</div>
+              <div class="text-xs text-gray-400">Critical · 80%+</div>
+            </div>
+          </div>
+          <div id="statWarning" class="flex items-center gap-3 p-2.5 rounded-xl border border-transparent hover:border-amber-100 hover:bg-amber-50 cursor-pointer transition-all" onclick="filterMap('warning',null)">
+            <div class="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-sm">🟡</div>
+            <div>
+              <div class="text-xl font-mono font-bold text-amber-500" id="countWarning">—</div>
+              <div class="text-xs text-gray-400">Warning · 60–80%</div>
+            </div>
+          </div>
+          <div id="statHealthy" class="flex items-center gap-3 p-2.5 rounded-xl border border-transparent hover:border-green-100 hover:bg-green-50 cursor-pointer transition-all" onclick="filterMap('ok',null)">
+            <div class="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center text-sm">🟢</div>
+            <div>
+              <div class="text-xl font-mono font-bold text-green-600" id="countHealthy">—</div>
+              <div class="text-xs text-gray-400">Healthy · &lt;60%</div>
+            </div>
+          </div>
+          <div id="statOffline" class="flex items-center gap-3 p-2.5 rounded-xl border border-transparent hover:border-gray-100 hover:bg-gray-50 cursor-pointer transition-all" onclick="filterMap('offline',null)">
+            <div class="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center text-sm">⚫</div>
+            <div>
+              <div class="text-xl font-mono font-bold text-gray-400" id="countOffline">—</div>
+              <div class="text-xs text-gray-400">Offline</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── RIGHT PANEL ── -->
+      <div class="hidden xl:flex flex-col w-80 bg-white border-l border-gray-200 overflow-hidden flex-shrink-0">
+
+        <!-- Active Trip -->
+        <div class="border-b border-gray-200">
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="text-sm font-semibold text-gray-900">Active Trip</div>
+            <a href="trips.html" class="text-xs text-amber-600 hover:underline font-medium">View all</a>
+          </div>
+          <div class="px-4 pb-4" id="activeTripPanel">
+            <div class="bg-gray-50 rounded-xl p-3 text-center">
+              <div class="text-xs text-gray-400">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bin list -->
+        <div class="flex flex-col flex-1 overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
+            <div class="text-sm font-semibold text-gray-900">Bins by fill level</div>
+            <a href="bins.html" class="text-xs text-amber-600 hover:underline font-medium" id="viewAllBins">View all</a>
+          </div>
+          <div class="overflow-y-auto custom-scroll flex-1" id="binListPanel">
+            <div class="flex items-center justify-center py-8">
+              <div class="text-xs text-gray-400">Loading bins...</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="../assets/js/auth.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/router.js"></script>
+
+<script>
+// ── Guard ──────────────────────────────────────────────────────────
+if (!AUTH.isLoggedIn()) { window.location.href = 'login.html'; }
+const user = AUTH.getUser();
+if (user.role === 'driver') { window.location.href = 'driver-trip.html'; }
+
+// ── Init ──────────────────────────────────────────────────────────
+let allBins = [];
+let currentFilter = 'all';
+
+// Set user info in nav
+if (user) {
+  const initials = (user.username || 'U').substring(0,2).toUpperCase();
+  document.getElementById('navInitials').textContent = initials;
+}
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('navClock').textContent =
+    now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+}
+updateClock();
+setInterval(updateClock, 30000);
+
+// Logout
+function handleLogout() {
+  AUTH.logout();
+}
+
+// ── Map positions (relative % for responsive) ──────────────────────
+const binPositions = {
+  'BSL-001': { x:18, y:72 }, 'BSL-002': { x:35, y:52 },
+  'BSL-003': { x:24, y:26 }, 'BSL-004': { x:42, y:46 },
+  'BSL-005': { x:68, y:26 }, 'BSL-006': { x:75, y:38 },
+  'BSL-007': { x:62, y:64 }, 'BSL-008': { x:52, y:54 },
+  'BSL-009': { x:28, y:40 }, 'BSL-010': { x:44, y:66 },
+  'BSL-011': { x:70, y:48 }, 'BSL-012': { x:60, y:76 },
+  'BSL-013': { x:76, y:18 }, 'BSL-014': { x:14, y:58 },
+  'BSL-015': { x:50, y:36 }, 'BSL-016': { x:22, y:34 },
+  'BSL-017': { x:38, y:22 }, 'BSL-018': { x:8,  y:46 },
+  'BSL-019': { x:32, y:16 }, 'BSL-020': { x:54, y:62 },
+};
+
+function getFillClass(fill) {
+  if (fill >= 80) return 'critical';
+  if (fill >= 60) return 'warning';
+  return 'ok';
+}
+
+function getPinColor(bin) {
+  if (!bin.is_online) return '#9CA3AF';
+  const fill = bin.fill_level;
+  if (fill >= 80) return '#EF4444';
+  if (fill >= 60) return '#F59E0B';
+  return '#10B981';
+}
+
+function renderMap(bins, filter) {
+  const container = document.getElementById('binMarkers');
+  container.innerHTML = '';
+  bins.forEach(bin => {
+    const cls = bin.is_online ? getFillClass(bin.fill_level) : 'offline';
+    if (filter !== 'all' && cls !== filter) return;
+    const pos = binPositions[bin.serial_number];
+    if (!pos) return;
+    const color = getPinColor(bin);
+    const fill = bin.fill_level ?? '—';
+    const m = document.createElement('div');
+    m.className = 'bin-marker';
+    m.style.left = pos.x + '%';
+    m.style.top  = pos.y + '%';
+    m.innerHTML = `
+      <div class="bin-pin" style="background:${color}"></div>
+      <div class="bin-tooltip-pop">
+        <div class="font-mono text-xs text-gray-400 mb-1">${bin.serial_number}</div>
+        <div class="text-2xl font-mono font-bold mb-1" style="color:${color}">${bin.is_online ? fill+'%' : 'Offline'}</div>
+        <div class="text-xs text-gray-500 mb-1">${bin.location_description}</div>
+        ${bin.is_online ? `<div class="fill-bar mt-2"><div class="fill-bar-inner" style="width:${fill}%;background:${color}"></div></div>` : ''}
+        <div class="text-xs text-gray-400 mt-1">Battery ${bin.latest_telemetry?.battery_level ?? '—'}%</div>
+      </div>`;
+    m.onclick = () => window.location.href = `bins.html?bin=${bin.id}`;
+    container.appendChild(m);
+  });
+}
+
+function renderBinList(bins) {
+  const sorted = [...bins].sort((a, b) => {
+    const order = { critical:0, offline:1, warning:2, ok:3 };
+    const ac = a.is_online ? getFillClass(a.fill_level) : 'offline';
+    const bc = b.is_online ? getFillClass(b.fill_level) : 'offline';
+    if (order[ac] !== order[bc]) return order[ac] - order[bc];
+    return (b.fill_level ?? 0) - (a.fill_level ?? 0);
+  });
+
+  const colors = { critical:'#EF4444', warning:'#F59E0B', ok:'#10B981', offline:'#9CA3AF' };
+  const textColors = { critical:'text-red-600', warning:'text-amber-500', ok:'text-green-600', offline:'text-gray-400' };
+
+  document.getElementById('binListPanel').innerHTML = sorted.map(bin => {
+    const cls = bin.is_online ? getFillClass(bin.fill_level) : 'offline';
+    const fill = bin.fill_level ?? 0;
+    const pct  = bin.is_online ? fill+'%' : '—';
+    return `
+      <div class="flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors" onclick="window.location.href='bins.html?bin=${bin.id}'">
+        <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${colors[cls]}"></div>
+        <div class="font-mono text-xs text-gray-400 w-14 flex-shrink-0">${bin.serial_number}</div>
+        <div class="text-xs text-gray-700 flex-1 truncate">${bin.location_description}</div>
+        <div class="w-12 flex-shrink-0">
+          <div class="fill-bar"><div class="fill-bar-inner" style="width:${bin.is_online?fill:0}%;background:${colors[cls]}"></div></div>
+        </div>
+        <div class="text-xs font-mono w-7 text-right flex-shrink-0 ${textColors[cls]}">${pct}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderStats(bins) {
+  let critical=0, warning=0, ok=0, offline=0;
+  bins.forEach(bin => {
+    if (!bin.is_online) { offline++; return; }
+    const f = bin.fill_level ?? 0;
+    if (f >= 80) critical++;
+    else if (f >= 60) warning++;
+    else ok++;
+  });
+  document.getElementById('countCritical').textContent = critical;
+  document.getElementById('countWarning').textContent  = warning;
+  document.getElementById('countHealthy').textContent  = ok;
+  document.getElementById('countOffline').textContent  = offline;
+  document.getElementById('sidebarBinCount').textContent = bins.length;
+
+  if (critical > 0) {
+    document.getElementById('alertBanner').classList.remove('hidden');
+    document.getElementById('alertBannerText').textContent =
+      `${critical} bin${critical>1?'s':''} above 80% fill — needs urgent collection.`;
+  }
+}
+
+function renderActiveTrip(trips) {
+  const active = trips.results?.find(t => t.status === 'in_progress') || trips.find?.(t => t.status === 'in_progress');
+  const panel  = document.getElementById('activeTripPanel');
+
+  if (!active) {
+    panel.innerHTML = `<div class="bg-gray-50 rounded-xl p-3 text-center"><div class="text-xs text-gray-400">No active trip right now</div></div>`;
+    return;
+  }
+
+  document.getElementById('sidebarActiveTrip').classList.remove('hidden');
+  document.getElementById('driverCard').classList.remove('hidden');
+  document.getElementById('driverName').textContent    = active.driver_name || '—';
+  document.getElementById('driverTripInfo').textContent = `Stop ${active.total_bins_collected} of ${active.total_bins_planned}`;
+
+  const pct = active.total_bins_planned > 0
+    ? Math.round((active.total_bins_collected / active.total_bins_planned) * 100)
+    : 0;
+
+  panel.innerHTML = `
+    <div class="bg-green-50 border border-green-200 rounded-xl p-3">
+      <div class="flex items-center gap-2 mb-2">
+        <div class="w-7 h-7 bg-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+          ${(active.driver_name||'D').split(' ').map(n=>n[0]).join('').substring(0,2)}
+        </div>
+        <div>
+          <div class="text-xs font-semibold text-gray-900">${active.driver_name}</div>
+          <div class="text-xs text-green-600 flex items-center gap-1">
+            <div class="w-1.5 h-1.5 rounded-full bg-green-500 blink"></div>
+            On trip · ${active.circuit_name}
+          </div>
+        </div>
+      </div>
+      <div class="mb-1.5">
+        <div class="fill-bar"><div class="fill-bar-inner bg-green-500" style="width:${pct}%"></div></div>
+      </div>
+      <div class="flex justify-between text-xs text-gray-500 mb-3">
+        <span>${pct}% complete</span>
+        <span>${active.total_bins_collected} of ${active.total_bins_planned} stops</span>
+      </div>
+      <div class="grid grid-cols-3 gap-1.5">
+        <div class="bg-white rounded-lg p-2 text-center">
+          <div class="font-mono text-base font-bold text-green-600">${active.total_bins_collected}</div>
+          <div class="text-xs text-gray-400 uppercase tracking-wide" style="font-size:9px">Done</div>
+        </div>
+        <div class="bg-white rounded-lg p-2 text-center">
+          <div class="font-mono text-base font-bold text-amber-500">${active.total_bins_planned - active.total_bins_collected}</div>
+          <div class="text-xs text-gray-400 uppercase tracking-wide" style="font-size:9px">Left</div>
+        </div>
+        <div class="bg-white rounded-lg p-2 text-center">
+          <div class="font-mono text-base font-bold text-gray-700">${active.total_bins_planned}</div>
+          <div class="text-xs text-gray-400 uppercase tracking-wide" style="font-size:9px">Total</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function filterMap(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.className = 'filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-gray-500 border border-gray-200 hover:border-gray-300 transition-all';
+  });
+  if (btn) {
+    btn.className = 'filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500 text-black border border-amber-500 transition-all';
+  }
+  renderMap(allBins, filter);
+}
+
+// ── Load data from API ─────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    // Load circuits
+    const circuits = await API.getCircuits();
+    const circuit  = circuits.results?.[0] || circuits[0];
+    if (circuit) {
+      document.getElementById('navCircuitCode').textContent = circuit.code;
+      document.getElementById('navCircuitName').textContent = circuit.name.replace('Ayawaso West Circuit 1','Ayawaso West');
+      document.getElementById('mapSubtitle').textContent    = `${circuit.total_bins} bins · ${circuit.name}`;
+      document.getElementById('viewAllBins').textContent    = `View all ${circuit.total_bins}`;
+    }
+
+    // Load bins
+    const binsData = await API.getBins();
+    allBins = binsData.results || binsData;
+
+    renderMap(allBins, 'all');
+    renderStats(allBins);
+    renderBinList(allBins);
+    document.getElementById('mapLoading').style.display = 'none';
+
+    // Load trips
+    const tripsData = await API.getTrips({ status:'in_progress' });
+    const trips     = tripsData.results || tripsData;
+    renderActiveTrip(trips);
+
+  } catch (err) {
+    console.error('Dashboard load error:', err);
+    document.getElementById('mapLoading').innerHTML = `
+      <div class="flex items-center gap-3 bg-white rounded-xl px-5 py-3 shadow-sm border border-red-200">
+        <span class="text-sm text-red-500 font-medium">Failed to load data. Is the server running?</span>
+      </div>`;
+  }
+}
+
+loadDashboard();
+
+// Auto refresh every 60 seconds
+setInterval(loadDashboard, 60000);
+</script>
+</body>
+</html>
