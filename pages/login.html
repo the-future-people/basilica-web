@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — Basilica</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Tailwind Config — Basilica Design Tokens -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: {
+              50:  '#FFFBEB',
+              100: '#FEF3C7',
+              200: '#FDE68A',
+              400: '#FBBF24',
+              500: '#F59E0B',
+              600: '#D97706',
+              700: '#B45309',
+            },
+            green: {
+              50:  '#ECFDF5',
+              100: '#D1FAE5',
+              500: '#10B981',
+              600: '#059669',
+              700: '#047857',
+            },
+            surface: '#F8F9FA',
+          },
+          fontFamily: {
+            sans:    ['DM Sans', 'sans-serif'],
+            mono:    ['DM Mono', 'monospace'],
+            display: ['Syne', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: 'DM Sans', sans-serif; }
+
+    .input-field {
+      width: 100%;
+      padding: 11px 14px 11px 42px;
+      border: 1.5px solid #E5E7EB;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      color: #111827;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-field::placeholder { color: #9CA3AF; }
+    .input-field:focus {
+      border-color: #F59E0B;
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.12);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp 0.5s ease both; }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-6px); }
+      40%      { transform: translateX(6px); }
+      60%      { transform: translateX(-4px); }
+      80%      { transform: translateX(4px); }
+    }
+    .shake { animation: shake 0.4s ease; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(0,0,0,0.15);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+
+    .btn-loading .btn-text { display: none; }
+    .btn-loading .spinner  { display: block; }
+
+    /* Left panel dot blink */
+    @keyframes blink {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.3; }
+    }
+    .blink { animation: blink 2s ease-in-out infinite; }
+
+    /* Subtle grid background */
+    .grid-bg {
+      background-color: #F8F9FA;
+      background-image:
+        linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-surface">
+<div class="min-h-screen flex">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="hidden lg:flex lg:w-[55%] bg-white border-r border-gray-100 flex-col justify-between p-12 relative overflow-hidden">
+
+    <!-- Amber accent top bar -->
+    <div class="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
+
+    <!-- Decorative grid -->
+    <div class="absolute inset-0 grid-bg opacity-60 pointer-events-none"></div>
+
+    <!-- Amber orb -->
+    <div class="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-amber-500 opacity-5 pointer-events-none"></div>
+    <div class="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-green-500 opacity-5 pointer-events-none"></div>
+
+    <!-- Logo -->
+    <div class="relative fade-up flex items-center gap-3">
+      <div class="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center flex-shrink-0">
+        <span class="font-display font-800 text-lg text-black font-bold">B</span>
+      </div>
+      <div>
+        <div class="font-display font-bold text-lg tracking-widest text-gray-900">BASILICA</div>
+        <div class="text-xs text-gray-400 tracking-widest uppercase">Smart Waste System</div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="relative fade-up delay-1">
+
+      <!-- Eyebrow -->
+      <div class="flex items-center gap-2 mb-6">
+        <div class="w-2 h-2 rounded-full bg-green-500 blink"></div>
+        <span class="text-xs font-semibold tracking-widest uppercase text-green-600">
+          Accra, Ghana — Pilot Active
+        </span>
+      </div>
+
+      <!-- Title -->
+      <h1 class="font-display text-5xl font-bold leading-tight text-gray-900 mb-6">
+        The city's waste,<br>
+        <span class="text-amber-500">seen</span> in real time.
+      </h1>
+
+      <!-- Description -->
+      <p class="text-gray-500 text-base leading-relaxed max-w-md mb-10">
+        Basilica connects solar-powered smart bins across Accra's circuits to a live operations dashboard — routing drivers efficiently, reducing overflow, and building the data that changes the city.
+      </p>
+
+      <!-- Stats -->
+      <div class="flex items-center gap-8">
+        <div>
+          <div class="font-mono text-2xl font-medium text-amber-500">20</div>
+          <div class="text-xs text-gray-400 uppercase tracking-wider mt-1">Bins deployed</div>
+        </div>
+        <div class="w-px h-10 bg-gray-200"></div>
+        <div>
+          <div class="font-mono text-2xl font-medium text-amber-500">1</div>
+          <div class="text-xs text-gray-400 uppercase tracking-wider mt-1">Active circuit</div>
+        </div>
+        <div class="w-px h-10 bg-gray-200"></div>
+        <div>
+          <div class="font-mono text-2xl font-medium text-amber-500">ACC-001</div>
+          <div class="text-xs text-gray-400 uppercase tracking-wider mt-1">Ayawaso West</div>
+        </div>
+      </div>
+
+      <!-- Live badge -->
+      <div class="mt-10 inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-4 py-2">
+        <div class="w-2 h-2 rounded-full bg-green-500 blink"></div>
+        <span class="text-xs font-medium text-green-700">
+          Live telemetry · Kofi Mensah on trip · Stop 8 of 14
+        </span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="relative fade-up delay-2 text-xs text-gray-400">
+      © 2026 The Future People · Basilica v1.0 · Pilot build
+    </div>
+  </div>
+
+  <!-- ── RIGHT PANEL — LOGIN ── -->
+  <div class="flex-1 flex items-center justify-center p-6 sm:p-12 bg-surface">
+    <div class="w-full max-w-sm fade-up delay-2">
+
+      <!-- Mobile logo -->
+      <div class="flex lg:hidden items-center gap-3 mb-10">
+        <div class="w-9 h-9 bg-amber-500 rounded-xl flex items-center justify-center">
+          <span class="font-bold text-black text-base">B</span>
+        </div>
+        <div class="font-display font-bold text-lg tracking-widest text-gray-900">BASILICA</div>
+      </div>
+
+      <!-- Header -->
+      <div class="mb-8">
+        <h2 class="font-display text-2xl font-bold text-gray-900 mb-2">Sign in</h2>
+        <p class="text-sm text-gray-500 leading-relaxed">
+          Access your Basilica operations portal. Your role determines what you see.
+        </p>
+      </div>
+
+      <!-- Error message -->
+      <div id="errorMsg" class="hidden mb-5 flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+        <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+        </svg>
+        <span id="errorText" class="text-sm text-red-600 font-medium"></span>
+      </div>
+
+      <!-- Form -->
+      <form id="loginForm" onsubmit="handleLogin(event)" novalidate>
+
+        <!-- Username -->
+        <div class="mb-4">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+            Username
+          </label>
+          <div class="relative">
+            <input
+              id="username"
+              type="text"
+              class="input-field"
+              placeholder="e.g. kofi.mensah"
+              autocomplete="username"
+            />
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="mb-6">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+            Password
+          </label>
+          <div class="relative">
+            <input
+              id="password"
+              type="password"
+              class="input-field"
+              placeholder="Your password"
+              autocomplete="current-password"
+            />
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+            </svg>
+            <button
+              type="button"
+              id="pwToggle"
+              onclick="togglePw()"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg id="eyeShow" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              <svg id="eyeHide" class="w-4 h-4 hidden" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button
+          type="submit"
+          id="submitBtn"
+          class="w-full bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-black font-semibold text-sm rounded-lg py-3 px-4 transition-all duration-200 flex items-center justify-center gap-2"
+        >
+          <span class="btn-text flex items-center gap-2">
+            Sign in
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+            </svg>
+          </span>
+          <div class="spinner"></div>
+        </button>
+
+      </form>
+
+      <!-- Divider -->
+      <div class="flex items-center gap-3 my-6">
+        <div class="flex-1 h-px bg-gray-200"></div>
+        <span class="text-xs text-gray-400">demo accounts</span>
+        <div class="flex-1 h-px bg-gray-200"></div>
+      </div>
+
+      <!-- Demo accounts -->
+      <div class="flex flex-col gap-2">
+        <button
+          onclick="fillDemo('basilica-admin', 'admin2026')"
+          class="flex items-center gap-3 w-full px-4 py-3 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:bg-amber-50 transition-all duration-150 text-left group"
+        >
+          <span class="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wide">Admin</span>
+          <span class="font-mono text-xs text-gray-600 flex-1">basilica-admin</span>
+          <svg class="w-4 h-4 text-gray-300 group-hover:text-amber-500 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+          </svg>
+        </button>
+        <button
+          onclick="fillDemo('kofi.mensah', 'basilica2026')"
+          class="flex items-center gap-3 w-full px-4 py-3 bg-white border border-gray-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-all duration-150 text-left group"
+        >
+          <span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wide">Driver</span>
+          <span class="font-mono text-xs text-gray-600 flex-1">kofi.mensah</span>
+          <svg class="w-4 h-4 text-gray-300 group-hover:text-green-500 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Footer -->
+      <p class="text-center text-xs text-gray-400 mt-8">
+        © 2026 The Future People · Basilica v1.0
+      </p>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ── SUCCESS OVERLAY ── -->
+<div id="successOverlay" class="hidden fixed inset-0 bg-white z-50 flex flex-col items-center justify-center gap-5">
+  <div class="w-16 h-16 bg-amber-50 border-2 border-amber-400 rounded-full flex items-center justify-center">
+    <svg class="w-7 h-7 text-amber-500" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+    </svg>
+  </div>
+  <div class="font-display text-2xl font-bold text-gray-900">Authenticated</div>
+  <div id="successName" class="text-sm text-gray-500"></div>
+  <div id="successDest" class="text-xs text-gray-400 font-mono"></div>
+</div>
+
+<!-- ── SCRIPTS ── -->
+<!-- Load modules in order -->
+<script src="../assets/js/auth.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/router.js"></script>
+
+<script>
+  // If already logged in, redirect
+  if (AUTH.isLoggedIn()) {
+    ROUTER.afterLogin();
+  }
+
+  function togglePw() {
+    const input = document.getElementById('password');
+    const show  = document.getElementById('eyeShow');
+    const hide  = document.getElementById('eyeHide');
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    show.classList.toggle('hidden', isPassword);
+    hide.classList.toggle('hidden', !isPassword);
+  }
+
+  function fillDemo(username, password) {
+    document.getElementById('username').value = username;
+    document.getElementById('password').value = password;
+    hideError();
+  }
+
+  function showError(msg) {
+    const box  = document.getElementById('errorMsg');
+    const text = document.getElementById('errorText');
+    text.textContent = msg;
+    box.classList.remove('hidden');
+    box.classList.add('shake');
+    setTimeout(() => box.classList.remove('shake'), 500);
+  }
+
+  function hideError() {
+    document.getElementById('errorMsg').classList.add('hidden');
+  }
+
+  function setLoading(on) {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = on;
+    btn.classList.toggle('btn-loading', on);
+    btn.classList.toggle('opacity-70', on);
+    btn.classList.toggle('cursor-not-allowed', on);
+  }
+
+  function showSuccess(username, role) {
+    const dest = role === 'driver' ? 'Driver Trip View' : 'Circuit Admin Dashboard';
+    document.getElementById('successName').textContent = `Welcome back, ${username}`;
+    document.getElementById('successDest').textContent = `Redirecting to ${dest}...`;
+    document.getElementById('successOverlay').classList.remove('hidden');
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    hideError();
+
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!username || !password) {
+      showError('Please enter your username and password.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const data = await API.login(username, password);
+      AUTH.setSession(data);
+      showSuccess(data.username, data.role);
+      setTimeout(() => ROUTER.afterLogin(), 1500);
+    } catch (err) {
+      showError(err.message || 'Invalid username or password.');
+      setLoading(false);
+    }
+  }
+
+  document.getElementById('username').addEventListener('input', hideError);
+  document.getElementById('password').addEventListener('input', hideError);
+</script>
+
+</body>
+</html>
