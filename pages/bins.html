@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bins — Basilica</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: { 50:'#FFFBEB',100:'#FEF3C7',200:'#FDE68A',400:'#FBBF24',500:'#F59E0B',600:'#D97706',700:'#B45309' },
+            green: { 50:'#ECFDF5',100:'#D1FAE5',500:'#10B981',600:'#059669',700:'#047857' },
+          },
+          fontFamily: {
+            sans:    ['DM Sans', 'sans-serif'],
+            mono:    ['DM Mono', 'monospace'],
+            display: ['Syne', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+  <style>
+    body { font-family: 'DM Sans', sans-serif; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    .fade-up { animation: fadeUp 0.35s ease both; }
+    .delay-1 { animation-delay:0.05s; }
+    .delay-2 { animation-delay:0.1s; }
+    .delay-3 { animation-delay:0.15s; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .blink { animation: blink 2s ease-in-out infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .spin { animation: spin 0.8s linear infinite; }
+
+    .nav-item { display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all 0.15s;color:#6B7280;font-size:13px;font-weight:500; }
+    .nav-item:hover { background:#F9FAFB;color:#111827; }
+    .nav-item.active { background:#FFFBEB;color:#D97706; }
+    .nav-item svg { width:16px;height:16px;flex-shrink:0; }
+
+    .custom-scroll::-webkit-scrollbar { width:4px; }
+    .custom-scroll::-webkit-scrollbar-track { background:transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background:#E5E7EB;border-radius:2px; }
+
+    /* Bin card */
+    .bin-card {
+      background: #fff;
+      border: 1px solid #E5E7EB;
+      border-radius: 14px;
+      overflow: hidden;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .bin-card:hover {
+      border-color: #D1D5DB;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      transform: translateY(-2px);
+    }
+    .bin-card .card-actions {
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .bin-card:hover .card-actions {
+      opacity: 1;
+    }
+
+    /* Fill bar */
+    .fill-bar { height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden; }
+    .fill-bar-inner { height:100%;border-radius:3px;transition:width 0.5s ease; }
+
+    /* Status badge */
+    .status-pill { display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase; }
+
+    /* Sensor chip */
+    .sensor-chip { display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:500;background:#F3F4F6;color:#6B7280; }
+
+    /* Filter tab */
+    .filter-tab { padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;border:1px solid #E5E7EB;background:#fff;color:#6B7280;cursor:pointer;transition:all 0.15s; }
+    .filter-tab:hover { border-color:#D1D5DB;color:#111827; }
+    .filter-tab.active { background:#F59E0B;color:#000;border-color:#F59E0B; }
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ── TOP NAV ── -->
+<nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+  <div class="flex items-center justify-between px-5 h-14">
+    <div class="flex items-center gap-3">
+      <a href="dashboard.html" class="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0">
+        <span class="font-display font-bold text-sm text-black">B</span>
+      </a>
+      <div class="hidden sm:block font-display font-bold text-sm tracking-widest text-gray-900">BASILICA</div>
+      <div class="flex items-center gap-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1 ml-1">
+        <span class="text-xs font-bold text-gray-500 uppercase tracking-wide" id="navCircuitCode">ACC-001</span>
+        <span class="text-gray-300">·</span>
+        <span class="text-xs text-gray-500" id="navCircuitName">Ayawaso West</span>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-1">
+      <a href="dashboard.html" class="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 transition-all">Overview</a>
+      <a href="bins.html"      class="px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-50 text-amber-700 border border-amber-200">Bins</a>
+      <a href="trips.html"     class="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 transition-all">Trips</a>
+      <a href="billing.html"   class="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 transition-all">Billing</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:flex items-center gap-1.5 text-xs font-medium text-green-600">
+        <div class="w-1.5 h-1.5 rounded-full bg-green-500 blink"></div>
+        Live
+      </div>
+      <div class="font-mono text-xs text-gray-400" id="navClock"></div>
+      <div class="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
+        <span class="text-xs font-bold text-black" id="navInitials">GE</span>
+      </div>
+      <button onclick="AUTH.logout()" class="hidden sm:flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/></svg>
+        Logout
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── LAYOUT ── -->
+<div class="flex" style="min-height:calc(100vh - 56px)">
+
+  <!-- SIDEBAR -->
+  <aside class="hidden lg:flex flex-col w-56 bg-white border-r border-gray-200 py-4 flex-shrink-0">
+    <div class="px-3 flex flex-col gap-1">
+      <div class="text-xs font-semibold uppercase tracking-widest text-gray-400 px-3 mb-1">Operations</div>
+      <a href="dashboard.html" class="nav-item">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
+        Overview
+      </a>
+      <div class="nav-item active">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+        All Bins
+        <span class="ml-auto bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full" id="sidebarCount">—</span>
+      </div>
+      <div class="text-xs font-semibold uppercase tracking-widest text-gray-400 px-3 mb-1 mt-3">Collection</div>
+      <a href="trips.html" class="nav-item">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>
+        Trips
+      </a>
+      <div class="text-xs font-semibold uppercase tracking-widest text-gray-400 px-3 mb-1 mt-3">Finance</div>
+      <a href="billing.html" class="nav-item">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>
+        Billing
+      </a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="flex-1 overflow-auto custom-scroll p-6">
+
+    <!-- Page header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 fade-up">
+      <div>
+        <h1 class="font-display text-2xl font-bold text-gray-900">All Bins</h1>
+        <p class="text-sm text-gray-500 mt-0.5" id="pageSubtitle">Loading...</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="relative">
+          <input
+            id="searchInput"
+            type="text"
+            placeholder="Search by ID or location..."
+            oninput="handleSearch(this.value)"
+            class="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 w-60 transition-all"
+          />
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+          </svg>
+        </div>
+        <button onclick="loadBins()" title="Refresh" class="p-2 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors">
+          <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Filter + stat tabs -->
+    <div class="flex flex-wrap items-center gap-2 mb-6 fade-up delay-1">
+      <button onclick="setFilter('all',this)"      class="filter-tab active">All <span id="tabAll"      class="font-mono ml-1">—</span></button>
+      <button onclick="setFilter('critical',this)" class="filter-tab">🔴 Critical <span id="tabCritical" class="font-mono ml-1">—</span></button>
+      <button onclick="setFilter('warning',this)"  class="filter-tab">🟡 Warning <span id="tabWarning"  class="font-mono ml-1">—</span></button>
+      <button onclick="setFilter('healthy',this)"  class="filter-tab">🟢 Healthy <span id="tabHealthy"  class="font-mono ml-1">—</span></button>
+      <button onclick="setFilter('offline',this)"  class="filter-tab">⚫ Offline <span id="tabOffline"  class="font-mono ml-1">—</span></button>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingState" class="flex items-center justify-center py-24">
+      <div class="flex items-center gap-3 bg-white rounded-xl px-6 py-4 border border-gray-200 shadow-sm">
+        <svg class="w-5 h-5 text-amber-500 spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+        <span class="text-sm text-gray-600 font-medium">Loading bins...</span>
+      </div>
+    </div>
+
+    <!-- Empty -->
+    <div id="emptyState" class="hidden flex flex-col items-center justify-center py-24 text-center">
+      <div class="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+        <svg class="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5"/>
+        </svg>
+      </div>
+      <div class="text-sm font-semibold text-gray-900 mb-1">No bins found</div>
+      <div class="text-xs text-gray-400">Try a different filter or search term</div>
+    </div>
+
+    <!-- Cards grid -->
+    <div id="binsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 fade-up delay-2"></div>
+
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="../assets/js/auth.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/router.js"></script>
+
+<script>
+  // ── Guard ──
+  if (!AUTH.isLoggedIn()) { window.location.href = 'login.html'; }
+  const user = AUTH.getUser();
+  if (user?.role === 'driver') { window.location.href = 'driver-trip.html'; }
+
+  // ── State ──
+  let allBins = [];
+  let currentFilter = 'all';
+  let searchQuery = '';
+
+  // Nav
+  if (user) {
+    document.getElementById('navInitials').textContent = (user.username||'U').substring(0,2).toUpperCase();
+  }
+  function updateClock() {
+    document.getElementById('navClock').textContent =
+      new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  }
+  updateClock();
+  setInterval(updateClock, 30000);
+
+  // ── Helpers ──
+  function getFillStatus(bin) {
+    if (!bin.is_online) return 'offline';
+    const f = bin.fill_level ?? 0;
+    if (f >= 80) return 'critical';
+    if (f >= 60) return 'warning';
+    return 'healthy';
+  }
+
+  function getAccentColor(status) {
+    return {
+      critical: { border:'border-red-400',    bg:'bg-red-500',    text:'text-red-500',    light:'bg-red-50',    badge:'bg-red-100 text-red-600' },
+      warning:  { border:'border-amber-400',  bg:'bg-amber-500',  text:'text-amber-500',  light:'bg-amber-50',  badge:'bg-amber-100 text-amber-600' },
+      healthy:  { border:'border-green-400',  bg:'bg-green-500',  text:'text-green-600',  light:'bg-green-50',  badge:'bg-green-100 text-green-700' },
+      offline:  { border:'border-gray-300',   bg:'bg-gray-400',   text:'text-gray-400',   light:'bg-gray-50',   badge:'bg-gray-100 text-gray-500' },
+    }[status];
+  }
+
+  function getFillBarColor(status) {
+    return { critical:'#EF4444', warning:'#F59E0B', healthy:'#10B981', offline:'#D1D5DB' }[status];
+  }
+
+  function getStatusLabel(status) {
+    return { critical:'Critical', warning:'Warning', healthy:'Healthy', offline:'Offline' }[status];
+  }
+
+  function getWasteTypeDot(type) {
+    return { general:'bg-red-500', recyclable:'bg-blue-500', organic:'bg-green-500' }[type] || 'bg-gray-400';
+  }
+
+  function getSignalLabel(rssi) {
+    if (!rssi && rssi !== 0) return '—';
+    if (rssi >= -70) return 'Strong';
+    if (rssi >= -90) return 'Good';
+    return 'Weak';
+  }
+
+  // ── Build one card ──
+  function buildCard(bin) {
+    const status  = getFillStatus(bin);
+    const accent  = getAccentColor(status);
+    const fill    = bin.fill_level ?? 0;
+    const t       = bin.latest_telemetry || {};
+    const barColor = getFillBarColor(status);
+
+    return `
+    <div class="bin-card fade-up">
+
+      <!-- Coloured left accent bar -->
+      <div class="flex">
+        <div class="w-1 flex-shrink-0 ${accent.bg} rounded-l-xl"></div>
+
+        <div class="flex-1 p-3">
+
+          <!-- Top row: ID + status badge -->
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <div class="font-mono text-xs font-bold ${accent.text} mb-0.5">${bin.serial_number}</div>
+              <h3 class="font-semibold text-sm text-gray-900 leading-tight">${bin.location_description}</h3>
+              <span class="inline-flex items-center gap-1 mt-1 bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full font-mono">${bin.circuit_name || 'ACC-001'}</span>
+            </div>
+            <span class="status-pill ${accent.badge} flex-shrink-0 ml-2">
+              <span class="w-1.5 h-1.5 rounded-full ${accent.bg} ${status === 'critical' ? 'blink' : ''}"></span>
+              ${getStatusLabel(status)}
+            </span>
+          </div>
+
+          <!-- Waste type + estimated time -->
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full ${getWasteTypeDot(bin.bin_type)} flex-shrink-0"></span>
+              <span class="text-xs text-gray-500 capitalize">${bin.bin_type} waste</span>
+            </div>
+            <div class="flex items-center gap-1 text-xs text-gray-400">
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span>Est. full ~ <span class="font-medium text-gray-600">—h —m</span></span>
+            </div>
+          </div>
+
+          <!-- Fill level — big number -->
+          <div class="flex items-end justify-between mb-2">
+            <div class="flex items-end gap-1">
+              <span class="font-mono font-bold text-2xl leading-none ${accent.text}">
+                ${bin.is_online ? fill : '—'}
+              </span>
+              ${bin.is_online ? `<span class="font-mono text-sm font-bold ${accent.text} mb-0.5">%</span>` : ''}
+            </div>
+            <!-- Battery -->
+            <div class="flex items-center gap-1.5 text-xs text-gray-500">
+              <svg class="w-3.5 h-3.5 ${t.battery_level < 20 ? 'text-red-500' : 'text-gray-400'}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 10.5h.375c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125H21M3.75 18h15A2.25 2.25 0 0021 15.75v-6a2.25 2.25 0 00-2.25-2.25h-15A2.25 2.25 0 001.5 9.75v6A2.25 2.25 0 003.75 18z"/>
+              </svg>
+              <span class="font-mono font-medium ${t.battery_level < 20 ? 'text-red-500' : ''}">${t.battery_level != null ? t.battery_level+'%' : '—'}</span>
+            </div>
+          </div>
+
+          <!-- Fill bar -->
+          <div class="fill-bar mb-3">
+            <div class="fill-bar-inner" style="width:${bin.is_online ? fill : 0}%;background:${barColor}"></div>
+          </div>
+
+          <!-- Sensor chips row -->
+          <div class="flex flex-wrap gap-1.5 mb-3">
+            <span class="sensor-chip">
+              <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+              Temp ${t.temperature ? parseFloat(t.temperature).toFixed(1)+'°C' : '—'}
+            </span>
+            <span class="sensor-chip">
+              <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+              Toxi —
+            </span>
+            <span class="sensor-chip">
+              <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+              Smoke —
+            </span>
+          </div>
+
+          <!-- Bottom row: Bearer + Circuit zone -->
+          <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+            <div class="flex items-center gap-1.5">
+              <div class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3 h-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                </svg>
+              </div>
+              <span class="text-xs text-gray-500">Bearer <span class="font-medium text-gray-700">—</span></span>
+            </div>
+            <div class="flex items-center gap-1 text-xs text-gray-400">
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253"/>
+              </svg>
+              <span class="font-semibold ${accent.text}">${bin.circuit_name?.replace('Ayawaso West Circuit 1','Ga West · ACC-001') || 'ACC-001'}</span>
+            </div>
+          </div>
+
+          <!-- Hover actions -->
+          <div class="card-actions flex gap-2 mt-3">
+            <button class="flex-1 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+              View history
+            </button>
+            <button class="flex-1 py-1.5 rounded-lg text-xs font-medium ${accent.light} ${accent.text} hover:opacity-80 transition-opacity">
+              Add to route
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── Render grid ──
+  function renderGrid(bins) {
+    const loading = document.getElementById('loadingState');
+    const empty   = document.getElementById('emptyState');
+    const grid    = document.getElementById('binsGrid');
+
+    loading.classList.add('hidden');
+
+    if (!bins.length) {
+      empty.classList.remove('hidden');
+      grid.innerHTML = '';
+      return;
+    }
+
+    empty.classList.add('hidden');
+    grid.innerHTML = bins.map(buildCard).join('');
+  }
+
+  // ── Filter + search ──
+  function getFiltered() {
+    return allBins.filter(bin => {
+      const status = getFillStatus(bin);
+      const matchFilter = currentFilter === 'all' || status === currentFilter;
+      const q = searchQuery.toLowerCase();
+      const matchSearch = !q ||
+        bin.serial_number.toLowerCase().includes(q) ||
+        bin.location_description.toLowerCase().includes(q);
+      return matchFilter && matchSearch;
+    });
+  }
+
+  function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderGrid(getFiltered());
+    updateSubtitle();
+  }
+
+  function handleSearch(val) {
+    searchQuery = val;
+    renderGrid(getFiltered());
+    updateSubtitle();
+  }
+
+  function updateSubtitle() {
+    const filtered = getFiltered();
+    document.getElementById('pageSubtitle').textContent =
+      `${filtered.length} of ${allBins.length} bins · Circuit ACC-001`;
+  }
+
+  function updateTabs(bins) {
+    let critical=0, warning=0, healthy=0, offline=0;
+    bins.forEach(b => {
+      const s = getFillStatus(b);
+      if (s==='critical') critical++;
+      else if (s==='warning') warning++;
+      else if (s==='healthy') healthy++;
+      else offline++;
+    });
+    document.getElementById('tabAll').textContent      = bins.length;
+    document.getElementById('tabCritical').textContent = critical;
+    document.getElementById('tabWarning').textContent  = warning;
+    document.getElementById('tabHealthy').textContent  = healthy;
+    document.getElementById('tabOffline').textContent  = offline;
+    document.getElementById('sidebarCount').textContent = bins.length;
+  }
+
+  // ── Load from API ──
+  async function loadBins() {
+    document.getElementById('loadingState').classList.remove('hidden');
+    document.getElementById('binsGrid').innerHTML = '';
+    document.getElementById('emptyState').classList.add('hidden');
+
+    try {
+      const circuits = await API.getCircuits();
+      const circuit  = circuits.results?.[0] || circuits[0];
+      if (circuit) {
+        document.getElementById('navCircuitCode').textContent = circuit.code;
+        document.getElementById('navCircuitName').textContent = circuit.name.replace('Ayawaso West Circuit 1','Ayawaso West');
+      }
+
+      const data = await API.getBins();
+      allBins = (data.results || data).sort((a,b) => (b.fill_level??0) - (a.fill_level??0));
+
+      updateTabs(allBins);
+      updateSubtitle();
+      renderGrid(getFiltered());
+
+    } catch (err) {
+      console.error(err);
+      document.getElementById('loadingState').innerHTML =
+        `<div class="text-sm text-red-500">Failed to load bins. Is the server running?</div>`;
+    }
+  }
+
+  loadBins();
+</script>
+</body>
+</html>
